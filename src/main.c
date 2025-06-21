@@ -127,8 +127,15 @@
 void delay_ms(long delay_value);
 void delay_us(double delay_value);
 
+// pwmDuty set according PWM State
+pwmDutyState_t set_pwm_cycle_according_button(pwmDutyState_t currentPwmState);
+
 // Setup / initialization prototype
 void setup(void);
+
+unsigned char EEPROM_Read(unsigned char address);
+void EEPROM_Write(unsigned char address, unsigned char data);
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,14 +176,28 @@ void main(void) {
         
     setup();
     
+    uint8_t pulseWidth = 0;
+    
+    
+    pulseWidth = EEPROM_Read(0x00);
+    pwm_set_duty_cycle(pulseWidth);
+    
     while(1){
         if(button == HIGH)
         {
             delay_ms(100);
             while(button == HIGH);
             delay_ms(100);
+            
+            if(pulseWidth >= 100)
+                pulseWidth = 30;
+            else
+                pulseWidth += 10;
+            
+            pwm_set_duty_cycle(pulseWidth);
+            EEPROM_Write(0x00, pulseWidth);
 
-            pwmDutyState = set_pwm_cycle_according_button(pwmDutyState);
+            //pwmDutyState = set_pwm_cycle_according_button(pwmDutyState);
 
         }
     }
@@ -208,3 +229,28 @@ void delay_us(double delay_value){
         __delay_ms(1);
     }
 }
+
+unsigned char EEPROM_Read(unsigned char address) {
+    while (WR);           // Esperar si hay escritura pendiente
+    EEADR = address;      // Dirección EEPROM
+    EECON1bits.RD = 1;    // Iniciar lectura
+    return EEDATA;        // Devolver dato leído
+}
+
+void EEPROM_Write(unsigned char address, unsigned char data) {
+    while (WR);           // Esperar si hay escritura pendiente
+    EEADR = address;      // Dirección EEPROM
+    EEDATA = data;        // Dato a escribir
+    EECON1bits.WREN = 1;
+    EECON1bits.WREN = 1;  // Habilitar escritura
+
+    INTCONbits.GIE = 0;   // Deshabilitar interrupciones (recomendado)
+    EECON2 = 0x55;        // Secuencia obligatoria
+    EECON2 = 0xAA;
+    EECON1bits.WR = 1;    // Iniciar escritura
+    INTCONbits.GIE = 1;   // Habilitar interrupciones
+
+    while (WR);           // Esperar finalización
+    EECON1bits.WREN = 0;  // Deshabilitar escritura
+}
+
