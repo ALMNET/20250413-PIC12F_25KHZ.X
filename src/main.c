@@ -38,6 +38,7 @@
 #include <stdbool.h>
 #include <builtins.h>
 #include "..\inc\PWM_LIB.h"
+#include "..\inc\EEPROM_LIB.h"
 
 #if defined(_12F675)    // Retro Compatibility for PIC12F675
 #include <pic12f675.h>
@@ -230,27 +231,4 @@ void delay_us(double delay_value){
     }
 }
 
-unsigned char EEPROM_Read(unsigned char address) {
-    while (WR);           // Esperar si hay escritura pendiente
-    EEADR = address;      // Dirección EEPROM
-    EECON1bits.RD = 1;    // Iniciar lectura
-    return EEDATA;        // Devolver dato leído
-}
-
-void EEPROM_Write(unsigned char address, unsigned char data) {
-    while (WR);           // Esperar si hay escritura pendiente
-    EEADR = address;      // Dirección EEPROM
-    EEDATA = data;        // Dato a escribir
-    EECON1bits.WREN = 1;
-    EECON1bits.WREN = 1;  // Habilitar escritura
-
-    INTCONbits.GIE = 0;   // Deshabilitar interrupciones (recomendado)
-    EECON2 = 0x55;        // Secuencia obligatoria
-    EECON2 = 0xAA;
-    EECON1bits.WR = 1;    // Iniciar escritura
-    INTCONbits.GIE = 1;   // Habilitar interrupciones
-
-    while (WR);           // Esperar finalización
-    EECON1bits.WREN = 0;  // Deshabilitar escritura
-}
 

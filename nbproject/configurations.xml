@@ -7,6 +7,7 @@
       <logicalFolder name="inc" displayName="inc" projectFiles="true">
         <itemPath>inc/UART_LIB.h</itemPath>
         <itemPath>inc/PWM_LIB.h</itemPath>
+        <itemPath>inc/EEPROM_LIB.h</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
@@ -26,6 +27,7 @@
         <itemPath>src/ADC_LIB.c</itemPath>
         <itemPath>src/UART_LIB.c</itemPath>
         <itemPath>src/PWM_LIB.c</itemPath>
+        <itemPath>src/EEPROM_LIB.c</itemPath>
       </logicalFolder>
     </logicalFolder>
   </logicalFolder>
