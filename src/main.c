@@ -86,58 +86,53 @@
 #if defined(_12F675)    // Retro Compatibility for PIC12F675
 
 // output MOTOR
-#define output_DIR         TRISIObits.TRISIO5
-#define output             GPIObits.GPIO5
+#define OUTPUT_PWM_DIR         TRISIObits.TRISIO5
+#define OUTPUT_PWM             GPIObits.GPIO5
 
 // TEMP SENSOR
-#define button_DIR  TRISIObits.TRISIO4
-#define button_PIN  ANSELbits.ANS3
-#define button      GPIObits.GPIO4
+#define BUTTON_PWM_INC_DIR  TRISIObits.TRISIO4
+#define BUTTON_PWM_INC_AIO  ANSELbits.ANS3
+#define BUTTON_PWM_INC      GPIObits.GPIO4
 
 #elif defined (_12F683)
-#define output_DIR                 TRISIObits.TRISIO2
-#define output                     GPIObits.GP2
+#define OUTPUT_PWM_DIR      TRISIObits.TRISIO2
+#define OUTPUT_PWM          GPIObits.GP2
 
-// TEMP SENSOR (LM35)
-#define button_DIR     TRISIObits.TRISIO0
-#define button_PIN     ANSELbits.ANS0
-#define button         GPIObits.GP0
+// PWM Increment Button
+#define BUTTON_PWM_INC_DIR  TRISIObits.TRISIO0
+#define BUTTON_PWM_INC_AIO  ANSELbits.ANS0
+#define BUTTON_PWM_INC      GPIObits.GP0
+
+// PWM Enable / Disable Button
+#define BUTTON_PWM_ENA_DIR  TRISIObits.TRISIO1
+#define BUTTON_PWM_ENA_AIO  ANSELbits.ANS1
+#define BUTTON_PWM_ENA      GPIObits.GP1
 
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////// GLOBAL VARIABLES /////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-
+typedef enum
+{
+    OUTPUT_ENABLED,
+    OUTPUT_DISABLED
+}pwmMode_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// PROTOTYPES ////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-//// ADC Prototypes
-//void ADC_Init(void);
-//unsigned int ADC_raw_read(void);
-
-//// Prototypes for PWM and fan control
-//void PWM_output(uint8_t dutyCycle);
-//void duty_cycle_according_temperature(unsigned int temperature);
-
 // Delay / Timer prototype
 void delay_ms(long delay_value);
 void delay_us(double delay_value);
-
-// pwmDuty set according PWM State
-pwmDutyState_t set_pwm_cycle_according_button(pwmDutyState_t currentPwmState);
 
 // Setup / initialization prototype
 void setup(void);
 
 unsigned char EEPROM_Read(unsigned char address);
 void EEPROM_Write(unsigned char address, unsigned char data);
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////// SETUP //////////////////////////////////////
@@ -153,14 +148,18 @@ void setup(void)
 #endif
             
     // output CONFIG
-    output_DIR = OUTPUT;
-    output = OFF;
+    OUTPUT_PWM_DIR = OUTPUT;
+    OUTPUT_PWM = OFF;
     
-    // LM35 TEMP SENSOR CONFIG
-    button_DIR = INPUT;
-    button_PIN = DIGITAL;
+    // PWM INCREMENT BUTTON CONFIGURATION
+    BUTTON_PWM_INC_DIR = INPUT;
+    BUTTON_PWM_INC_AIO = DIGITAL;
     
-    ANSELbits.ANS = 0b0000; // All Digital
+    // PWM ENABLE DISABLE BUTTON CONFIGURATION
+    BUTTON_PWM_ENA_DIR = INPUT;
+    BUTTON_PWM_ENA_AIO = DIGITAL;
+    
+    //ANSELbits.ANS = 0b0000; // All Digital
     
     // ADC_Init();
     
@@ -173,21 +172,25 @@ void setup(void)
 ////////////////////////////////////////////////////////////////////////////////
 
 void main(void) {    
-    pwmDutyState_t pwmDutyState = PWM_30_DUTY; // Default Value
-        
+    
+    // Main local variable definitions
+    uint8_t pulseWidth = 0;
+    pwmMode_t PWM_MODE = OUTPUT_ENABLED;
+            
+            
     setup();
     
-    uint8_t pulseWidth = 0;
-    
-    
+    // Set Initial PWM duty cycle according last used
     pulseWidth = EEPROM_Read(0x00);
     pwm_set_duty_cycle(pulseWidth);
     
     while(1){
-        if(button == HIGH)
+        
+        // Check if PWM increment button was pressed
+        if(BUTTON_PWM_INC == HIGH && PWM_MODE == OUTPUT_ENABLED)
         {
             delay_ms(100);
-            while(button == HIGH);
+            while(BUTTON_PWM_INC == HIGH);
             delay_ms(100);
             
             if(pulseWidth >= 100)
@@ -198,24 +201,37 @@ void main(void) {
             pwm_set_duty_cycle(pulseWidth);
             EEPROM_Write(0x00, pulseWidth);
 
-            //pwmDutyState = set_pwm_cycle_according_button(pwmDutyState);
+        }
+        
+        // Check if PWM increment button was pressed
+        if(BUTTON_PWM_ENA == HIGH)
+        {
+            delay_ms(100);
+            while(BUTTON_PWM_ENA == HIGH);
+            delay_ms(100);
+            
+            if(PWM_MODE == OUTPUT_ENABLED)
+            {
+                pwm_set_duty_cycle(0);      // 0%, simulates a disabled output
+                //EEPROM_Write(0x00, pulseWidth);
+                PWM_MODE = OUTPUT_DISABLED;
+            }
+            else
+            {
+                pwm_set_duty_cycle(pulseWidth);
+                //EEPROM_Write(0x00, pulseWidth);
+                PWM_MODE = OUTPUT_ENABLED;
+            }
+            
 
         }
+        
     }
     
     return;
 }
 
 ///////////////////////////////// AUX FUNCTIONS ////////////////////////////////
-
-/**
- * @brief   Sets PWM cycle on fan according read temperature
- *
- * @param   temperature: Temperature ref value (Used to be the one which was
- *                       read from the temperature sensor)
- * 
- * @return  none.
- */
 
 void delay_ms(long delay_value){
     CLRWDT();

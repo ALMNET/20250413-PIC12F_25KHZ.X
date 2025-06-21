@@ -21,22 +21,10 @@
 #include <pic12f683.h>
 #endif
 
-typedef enum 
-{
-    PWM_30_DUTY,
-    PWM_40_DUTY,
-    PWM_50_DUTY,
-    PWM_60_DUTY,
-    PWM_70_DUTY,
-    PWM_80_DUTY,
-    PWM_90_DUTY,
-    PWM_100_DUTY,     
-}pwmDutyState_t;
 
 // pwm Prototypes
 void pwm_setup();
 unsigned short pwm_set_duty_cycle(unsigned short dutyCycle);
-pwmDutyState_t set_pwm_cycle_according_button(pwmDutyState_t currentPwmState);
 
 #ifdef	__cplusplus
 extern "C" {
