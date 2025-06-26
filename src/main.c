@@ -83,6 +83,9 @@
 
 #define MAIN_FREQ       250	// Frequency in hz
 
+#define LED_TOGGLE_START_TIMES 3
+#define LED_TOGGLE_PWM_SET_TIMES 4
+
 #if defined(_12F675)    // Retro Compatibility for PIC12F675
 
 // output MOTOR
@@ -108,6 +111,12 @@
 #define BUTTON_PWM_ENA_AIO  ANSELbits.ANS1
 #define BUTTON_PWM_ENA      GPIObits.GP1
 
+// LED Status
+#define LED_STATUS_DIR      TRISIObits.TRISIO4
+#define LED_STATUS_AIO      ANSELbits.ANS3
+#define LED_STATUS          GPIObits.GP4
+
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,6 +129,8 @@ typedef enum
     OUTPUT_DISABLED
 }pwmMode_t;
 
+uint16_t timer0_cnt = 0;
+
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// PROTOTYPES ////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,8 +142,10 @@ void delay_us(double delay_value);
 // Setup / initialization prototype
 void setup(void);
 
-unsigned char EEPROM_Read(unsigned char address);
-void EEPROM_Write(unsigned char address, unsigned char data);
+void timer0_init();
+
+void led_pwm_toggle_start();
+void led_start_toggle_start();
 
 ////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////// SETUP //////////////////////////////////////
@@ -159,11 +172,19 @@ void setup(void)
     BUTTON_PWM_ENA_DIR = INPUT;
     BUTTON_PWM_ENA_AIO = DIGITAL;
     
+    // LED STATUS
+    LED_STATUS_DIR     = OUTPUT;
+    LED_STATUS_AIO     = DIGITAL;
+    
     //ANSELbits.ANS = 0b0000; // All Digital
     
     // ADC_Init();
     
-    pwm_setup();
+    pwm_init();
+    
+    timer0_init();
+    
+    INTCONbits.GIE = 1;        // Enables Global Interrupts      
     
 }
 
@@ -180,6 +201,10 @@ void main(void) {
             
     setup();
     
+    
+    
+    led_pwm_toggle_start(); 
+    
     // Set Initial PWM duty cycle according last used
     pulseWidth = EEPROM_Read(0x00);
     pwm_set_duty_cycle(pulseWidth);
@@ -192,6 +217,8 @@ void main(void) {
             delay_ms(100);
             while(BUTTON_PWM_INC == HIGH);
             delay_ms(100);
+            
+            led_pwm_toggle_start();
             
             if(pulseWidth >= 100)
                 pulseWidth = 30;
@@ -247,4 +274,49 @@ void delay_us(double delay_value){
     }
 }
 
+
+
+
+
+void timer0_init()
+{
+    OPTION_REGbits.T0CS = 0;    // Internal Clock (Fosc/4)
+    OPTION_REGbits.PSA = 0;     // Prescaler Asigned to Timer0
+    OPTION_REGbits.PS = 0b001;  // Preescaler set to 1:4
+
+    TMR0 = 6;                   // Carga inicial
+
+    INTCONbits.T0IF = 0;        // Clear Tmr0 interrupt flag
+    INTCONbits.T0IE = 1;        // Enables Tmr0     
+    
+}
+
+
+void __interrupt() isr(void) {
+    if (INTCONbits.T0IF) {
+        TMR0 = 6;                // Recargar para mantener 1 ms
+        INTCONbits.T0IF = 0;     // Limpiar bandera
+                
+        if(timer0_cnt > 0)
+        {
+            if((timer0_cnt % (1000 / (2 * LED_TOGGLE_PWM_SET_TIMES))) == 0)
+            {
+                LED_STATUS = ~LED_STATUS;
+            }
+            timer0_cnt--;            
+        }
+        
+    }
+}
+
+
+void led_pwm_toggle_start()
+{
+    timer0_cnt = 2 * LED_TOGGLE_START_TIMES * 125;
+}
+
+void led_start_toggle_start()
+{
+    timer0_cnt = 2 * LED_TOGGLE_PWM_SET_TIMES * 125;
+}
 

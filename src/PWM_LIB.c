@@ -19,7 +19,7 @@
  * 
  * @return  None
  */
-void pwm_setup(){
+void pwm_init(){
     
 //#if defined(_12F675)
     

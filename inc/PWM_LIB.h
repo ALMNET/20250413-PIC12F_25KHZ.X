@@ -23,7 +23,7 @@
 
 
 // pwm Prototypes
-void pwm_setup();
+void pwm_init();
 unsigned short pwm_set_duty_cycle(unsigned short dutyCycle);
 
 #ifdef	__cplusplus
